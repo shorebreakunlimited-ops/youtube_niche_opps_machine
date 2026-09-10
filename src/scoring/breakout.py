@@ -43,13 +43,22 @@ def compute_breakout_score(
     video_velocities = [v.lifetime_proxy_velocity for v in videos]
     perf_percentiles = percentile_ranks(video_velocities)
 
-    channel_subs = [
-        channels[v.channel_id].subscribers
-        if v.channel_id in channels and channels[v.channel_id].subscribers is not None
-        else 0
-        for v in videos
+    # Calculate channel size percentiles across UNIQUE channels with KNOWN subscriber counts
+    unique_channel_ids = list({v.channel_id for v in videos})
+    known_channels = [
+        cid for cid in unique_channel_ids
+        if cid in channels and channels[cid].subscribers is not None
     ]
-    size_percentiles = percentile_ranks(channel_subs)
+    known_subs = [channels[cid].subscribers for cid in known_channels]
+    subs_ranks = percentile_ranks(known_subs) if known_subs else []
+    
+    # Map channel_id -> unique channel size percentile (None if subscriber count unknown)
+    size_percentiles: Dict[str, Optional[float]] = {}
+    for cid, rank in zip(known_channels, subs_ranks):
+        size_percentiles[cid] = rank
+    for cid in unique_channel_ids:
+        if cid not in size_percentiles:
+            size_percentiles[cid] = None
 
     eligible_videos = 0
     breakout_videos = []
@@ -60,14 +69,20 @@ def compute_breakout_score(
     for i, v in enumerate(videos):
         ch = channels.get(v.channel_id)
         subs = ch.subscribers if ch else None
-        size_pct = size_percentiles[i]
+        size_pct = size_percentiles.get(v.channel_id)
         perf_pct = perf_percentiles[i]
 
-        # Dual Small Channel check
-        is_small = (
-            (subs is not None and 0 <= subs <= small_channel_sub_limit)
-            or (size_pct <= small_channel_percentile_cutoff)
-        )
+        # Dual Small Channel check:
+        # A channel qualifies if subs is known and <= small_channel_sub_limit,
+        # OR if its unique-channel percentile is <= small_channel_percentile_cutoff.
+        # Channels with unknown subscribers are NOT assumed small by default;
+        # they must have known subscribers or clear channel size percentile.
+        is_small = False
+        if subs is not None and 0 <= subs <= small_channel_sub_limit:
+            is_small = True
+        elif size_pct is not None and size_pct <= small_channel_percentile_cutoff:
+            is_small = True
+
         if not is_small:
             continue
 
@@ -84,14 +99,25 @@ def compute_breakout_score(
             tier = "A"
             tier_conf = 1.0
         elif channel_video_map and v.channel_id in channel_video_map:
-            # Tier B: Historical LOO baseline across other channel videos
-            peer_views = [
-                peer.views
-                for peer in channel_video_map[v.channel_id]
+            # Tier B: Historical LOO baseline with age & velocity decay normalization
+            # Rather than raw unadjusted lifetime views, scale peer views to candidate's age
+            # using power-law decay curve: ExpectedViews(t) ~ t^0.7
+            peer_vids = [
+                peer for peer in channel_video_map[v.channel_id]
                 if peer.video_id != v.video_id
             ]
-            if peer_views:
-                baseline_views = max(float(np.median(peer_views)), baseline_floor)
+            if peer_vids:
+                cand_age = max(1.0, float(v.video_age_days))
+                age_normalized_views = []
+                for peer in peer_vids:
+                    peer_age = max(1.0, float(peer.video_age_days))
+                    # Scale peer views to candidate age: views * (cand_age / peer_age)^0.7
+                    age_scaling_factor = (cand_age / peer_age) ** 0.70
+                    # Clamp scaling factor to avoid extreme extrapolation ([0.1, 10.0])
+                    clamped_factor = max(0.1, min(10.0, age_scaling_factor))
+                    age_normalized_views.append(peer.views * clamped_factor)
+                
+                baseline_views = max(float(np.median(age_normalized_views)), baseline_floor)
                 tier = "B"
                 tier_conf = 0.8
             elif ch and ch.median_recent_views:

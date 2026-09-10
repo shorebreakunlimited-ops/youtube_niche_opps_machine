@@ -440,6 +440,56 @@ class Database:
         elapsed_days = max(0.0417, (t2 - t1).total_seconds() / 86400.0)
         return max(0.0, float(v2 - v1) / elapsed_days)
 
+    def get_snapshot_velocities_for_videos(self, video_ids: List[str]) -> Dict[str, float]:
+        """Compute snapshot delta velocity for all given videos having at least 2 observations."""
+        velocities: Dict[str, float] = {}
+        for vid in video_ids:
+            vel = self.compute_snapshot_delta_velocity(vid)
+            if vel is not None:
+                velocities[vid] = vel
+        return velocities
+
+    def get_snapshot_baselines_for_videos(
+        self,
+        videos: List[Video],
+        tolerance_days: float = 30.0,
+    ) -> Dict[str, float]:
+        """Compute Tier A snapshot-derived age-matched baselines from historical snapshot observations.
+        
+        For each candidate video, queries peer videos from the same channel that had a snapshot
+        taken at a similar age (within tolerance_days) and computes their historical median view count.
+        """
+        baselines: Dict[str, float] = {}
+        cur = self.conn.cursor()
+        
+        for vid in videos:
+            target_age = vid.video_age_days
+            # Find peer video snapshots from the same channel
+            cur.execute(
+                """
+                SELECT s.views, v.published_at, s.observed_at
+                FROM video_metric_snapshots s
+                JOIN videos v ON s.video_id = v.video_id
+                WHERE v.channel_id = ? AND v.video_id != ?
+                ORDER BY s.observed_at DESC
+                """,
+                (vid.channel_id, vid.video_id),
+            )
+            rows = cur.fetchall()
+            matched_views = []
+            for r in rows:
+                pub_dt = datetime.fromisoformat(r["published_at"].replace("Z", "+00:00"))
+                obs_dt = datetime.fromisoformat(r["observed_at"].replace("Z", "+00:00"))
+                snap_age_days = max(0.0, (obs_dt - pub_dt).total_seconds() / 86400.0)
+                if abs(snap_age_days - target_age) <= tolerance_days:
+                    matched_views.append(float(r["views"]))
+            
+            if matched_views:
+                import numpy as np
+                baselines[vid.video_id] = float(np.median(matched_views))
+                
+        return baselines
+
     def get_validation_history(self, niche_id: str) -> List[Dict[str, Any]]:
         cur = self.conn.cursor()
         cur.execute(

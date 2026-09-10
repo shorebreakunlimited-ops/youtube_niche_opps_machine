@@ -25,6 +25,7 @@ from src.scoring.supply import compute_supply_scarcity_score
 from src.storage.cache import SQLiteCache
 from src.storage.database import NicheDatabase
 from src.validation.outlier_analysis import analyze_outliers
+from src.validation.topic_depth import evaluate_topic_depth_and_runway
 
 logger = logging.getLogger(__name__)
 
@@ -82,7 +83,19 @@ class NicheValidator:
             )
             self.db.save_niche(niche_entity)
 
-        # 4. Compute Sub-scores
+        # 4. Snapshot-derived velocity and baseline resolution from storage
+        snapshot_velocities: Dict[str, float] = {}
+        snapshot_baselines: Dict[str, float] = {}
+        snapshot_coverage_ratio = 0.0
+
+        if self.db and videos:
+            video_ids = [v.video_id for v in videos]
+            snapshot_velocities = self.db.get_snapshot_velocities_for_videos(video_ids)
+            snapshot_baselines = self.db.get_snapshot_baselines_for_videos(videos)
+            if len(videos) > 0:
+                snapshot_coverage_ratio = len(snapshot_velocities) / len(videos)
+
+        # 5. Compute Sub-scores
         demand_score = compute_demand_score(videos)
 
         (
@@ -93,7 +106,11 @@ class NicheValidator:
             breakout_diversity,
             breakout_evidence,
             avg_tier_conf,
-        ) = compute_breakout_score(videos, channels)
+        ) = compute_breakout_score(
+            videos=videos,
+            channels=channels,
+            snapshot_baselines=snapshot_baselines if snapshot_baselines else None,
+        )
 
         (
             supply_scarcity,
@@ -104,18 +121,19 @@ class NicheValidator:
             videos, channels, p_hat_breakout=p_hat_breakout, p_neutralize=0.20
         )
 
-        acceleration_score = compute_acceleration_score(videos)
+        acceleration_score = compute_acceleration_score(
+            videos=videos,
+            snapshot_velocities=snapshot_velocities if snapshot_velocities else None,
+        )
 
-        # Topic runway / Repeatability:
-        # Number of unique angles from autocomplete suggestions and video titles
-        distinct_topics = set(s.lower() for s in suggestions)
-        for v in videos:
-            words = [w for w in v.title.lower().split() if len(w) > 4]
-            if len(words) >= 2:
-                distinct_topics.add(" ".join(words[:2]))
-        runway_count = len(distinct_topics)
-        # Scale: weak <=15, limited <=35, workable <=70, strong >=120
-        repeatability_score = min(100.0, max(10.0, (runway_count / 80.0) * 100.0))
+        # 6. Topic runway & depth evaluation using 15-axis ontology with semantic TF-IDF embeddings
+        video_titles = [v.title for v in videos]
+        runway_metrics = evaluate_topic_depth_and_runway(
+            seed_topic=clean_name,
+            video_titles=video_titles,
+            autocomplete_suggestions=suggestions,
+        )
+        repeatability_score = float(runway_metrics["repeatability_score"])
 
         # Durability:
         # Proportion of videos published >90 days ago that still maintain healthy views
@@ -179,7 +197,7 @@ class NicheValidator:
 
         confidence_score, agreement_score, status = compute_confidence_score(
             video_count=len(videos),
-            snapshot_coverage_ratio=0.0,
+            snapshot_coverage_ratio=snapshot_coverage_ratio,
             avg_breakout_tier_confidence=avg_tier_conf,
             source_demand_indices=source_indices if len(source_indices) >= 2 else None,
         )
@@ -233,16 +251,12 @@ class NicheValidator:
                 }
             )
 
-        # Video Ideas from autocomplete and high-velocity formats
+        # Video Ideas from topic depth runway angles & autocomplete
         video_ideas = [
-            f"Complete Beginner Guide to {clean_name.title()}",
-            f"Top 5 Mistakes in {clean_name.title()} (And How to Avoid Them)",
-            f"{clean_name.title()} Full Workflow Walkthrough for 2026",
-            f"The Untold Truth About {clean_name.title()}",
-            f"How I Built a {clean_name.title()} System From Scratch",
+            idea["title"] for idea in runway_metrics.get("generated_video_angles", [])[:6]
         ]
         if suggestions:
-            for s in suggestions[:5]:
+            for s in suggestions[:4]:
                 formatted_idea = s.title()
                 if formatted_idea not in video_ideas:
                     video_ideas.append(formatted_idea)

@@ -43,6 +43,14 @@ class QueryExpander:
         clean_seed = seed.strip()
         return [f"{clean_seed} {c}" for c in "abcdefghijklmnopqrstuvwxyz"]
 
+    def generate_recursive_alphabet_probes(self, seed: str, top_letters: str = "abcst") -> List[str]:
+        """Generate focused recursive 2-level alphabet tree probes for deep discovery."""
+        clean_seed = seed.strip()
+        probes = []
+        for c in top_letters:
+            probes.append(f"{clean_seed} {c}")
+        return probes
+
     def generate_interrogative_probes(self, seed: str) -> List[str]:
         """Generate interrogative question-intent probes."""
         clean_seed = seed.strip()

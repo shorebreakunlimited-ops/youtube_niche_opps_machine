@@ -1,6 +1,10 @@
 """Universal 15-axis topic depth and guarded runway analysis."""
 
-from typing import Any, Dict, List, Set
+import math
+import re
+from typing import Any, Dict, List, Optional, Set
+import numpy as np
+
 from src.scoring.statistics import guarded_entropy_ratio, guarded_inter_cluster_distance
 
 # The 15 Universal Domain-Neutral Axes for YouTube Topic Exploration
@@ -120,12 +124,51 @@ def evaluate_topic_depth_and_runway(
     # Guarded Shannon entropy ratio across axes
     entropy_ratio = guarded_entropy_ratio(cluster_sizes)
 
-    # Simulated centroid vectors for each covered axis to test inter-cluster distance
+    # Build semantic TF-IDF embedding vectors for each covered axis
+    # Tokenize axis keywords + matched titles into a shared vocabulary
+    all_axis_texts: Dict[str, List[str]] = {}
+    vocabulary: Set[str] = set()
+    for axis_key, axis_meta in UNIVERSAL_15_AXES.items():
+        texts = [axis_meta["name"].lower()] + [kw.lower() for kw in axis_meta["keywords"]] + axis_matches[axis_key]
+        token_list = []
+        for t in texts:
+            tokens = re.findall(r"\b[a-z]{3,}\b", t)
+            token_list.extend(tokens)
+            vocabulary.update(tokens)
+        all_axis_texts[axis_key] = token_list
+
+    vocab_index = {w: i for i, w in enumerate(sorted(vocabulary))}
+    vocab_size = max(len(vocab_index), 1)
+
+    # Document frequency across axes
+    doc_freq = np.zeros(vocab_size)
+    num_axes = len(UNIVERSAL_15_AXES)
+    for axis_key, token_list in all_axis_texts.items():
+        unique_tokens = set(token_list)
+        for token in unique_tokens:
+            if token in vocab_index:
+                doc_freq[vocab_index[token]] += 1
+    idf = np.log((num_axes + 1.0) / (doc_freq + 1.0)) + 1.0
+
+    # Compute semantic embedding vector for each covered axis
     active_centroids = []
-    for idx, (axis_key, matches) in enumerate(axis_matches.items()):
+    for axis_key, matches in axis_matches.items():
         if matches:
-            # 2D coordinate representation of axis distribution
-            active_centroids.append([float(idx), float(len(matches))])
+            tokens = all_axis_texts[axis_key]
+            vec = np.zeros(vocab_size)
+            for token in tokens:
+                if token in vocab_index:
+                    vec[vocab_index[token]] += 1.0
+            norm = np.linalg.norm(vec)
+            if norm > 0:
+                tf = vec / norm
+                tfidf_vec = tf * idf
+                vec_norm = np.linalg.norm(tfidf_vec)
+                if vec_norm > 0:
+                    tfidf_vec = tfidf_vec / vec_norm
+                active_centroids.append(tfidf_vec.tolist())
+            else:
+                active_centroids.append(vec.tolist())
 
     inter_cluster_dist = guarded_inter_cluster_distance(active_centroids)
 
