@@ -22,7 +22,7 @@ jobs:
       - name: Install dependencies
         run: |
           python -m pip install --upgrade pip
-          pip install pytest numpy requests pyyaml anyio
+          pip install -r requirements.txt
 
       - name: Run test suite
         run: |
