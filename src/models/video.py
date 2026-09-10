@@ -41,13 +41,14 @@ class Video:
         pub = self.published_datetime
         if pub.tzinfo is None:
             pub = pub.replace(tzinfo=timezone.utc)
-        delta_days = (now - pub).total_seconds() / 86400.0
+        delta_days = round((now - pub).total_seconds()) / 86400.0
         return max(0.001, delta_days)
 
     @property
     def lifetime_proxy_velocity(self) -> float:
         """Lifetime views divided by age in days."""
-        return self.views / max(self.video_age_days, 1.0)
+        vel = self.views / max(self.video_age_days, 1.0)
+        return float(round(vel, 4))
 
     @property
     def likes_per_1000_views(self) -> float:

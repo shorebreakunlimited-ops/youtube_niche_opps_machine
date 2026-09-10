@@ -47,16 +47,24 @@ def percentile_rank(data: Sequence[float], value: float) -> float:
 
 
 def percentile_ranks(data: Sequence[float]) -> List[float]:
-    """Compute percentile ranks (0.0 to 100.0) for every element in data."""
+    """Compute percentile ranks (0.0 to 100.0) for every element in data with average tie handling."""
     if not data:
         return []
-    arr = np.array(data, dtype=float)
-    n = len(arr)
+    clean_data = [float(x) for x in data]
+    n = len(clean_data)
     if n == 1:
         return [50.0]
-    # Use scipy/pandas style average ranking or sort-based rank
-    ranks = np.argsort(np.argsort(arr)) + 1
-    return [float(r / n * 100.0) for r in ranks]
+    
+    # Compute rank with average tie handling
+    arr = np.array(clean_data)
+    # count of elements strictly less + 0.5 * (count of elements equal)
+    ranks = []
+    for x in arr:
+        count_less = np.sum(arr < x)
+        count_equal = np.sum(arr == x)
+        rank = (count_less + 0.5 * count_equal) / n * 100.0
+        ranks.append(float(rank))
+    return ranks
 
 
 def safe_ratio(numerator: float, denominator: float, floor: float = 1.0) -> float:
