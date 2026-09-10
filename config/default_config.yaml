@@ -1,0 +1,93 @@
+# YouTube Niche Opportunity Search Engine Configuration
+# Version 2.2.0 - Frozen Architecture
+
+scoring:
+  weights:
+    demand: 0.25
+    supply_scarcity: 0.20
+    acceleration: 0.18
+    breakout: 0.20
+    repeatability: 0.10
+    durability: 0.07
+
+  commercial_weights:
+    ad_rate_index: 0.40
+    sponsor_affinity: 0.35
+    affiliate_viability: 0.25
+
+  creator_deductions:
+    production_risk_weight: 0.35
+    rights_risk_weight: 0.40
+    creator_penalty_scale: 40.0
+    creator_penalty_divisor: 35.0
+
+acceleration:
+  sensitivity_k: 1.0
+  baseline_epsilon: 0.001
+  min_elapsed_days_floor: 0.0417  # 1 hour floor for snapshot delta
+
+breakout:
+  # Bayesian Beta-Binomial conjugate prior (initial calibration prior)
+  prior_alpha: 1.0
+  prior_beta: 19.0
+  target_breakout_rate: 0.25
+  baseline_floor: 100.0
+  breakout_multiplier_threshold: 3.0
+  small_channel_sub_limit: 50000
+  small_channel_percentile_cutoff: 25.0
+  performance_percentile_cutoff: 75.0
+
+supply:
+  p_neutralize: 0.20  # Neutralizes HHI penalty when breakout rate >= 20%
+  density_weights:
+    creator_density: 0.40
+    publishing_cadence: 0.35
+    supply_growth: 0.25
+  concentration_penalties:
+    hhi_max: 25.0
+    incumbent_share_max: 20.0
+    incumbent_sub_threshold: 250000
+
+outlier:
+  top1_center: 0.55
+  top3_center: 0.78
+  steepness: 15.0
+  top1_weight: 0.65
+  top3_weight: 0.35
+  max_penalty: 40.0
+
+repeatability:
+  dup_similarity_threshold: 0.85
+  scale_thresholds:
+    weak: 15
+    limited: 35
+    workable: 70
+    strong: 120
+
+confidence:
+  sample_size_target: 50.0
+  weights:
+    sample_quality: 0.35
+    temporal_quality: 0.25
+    breakout_tier: 0.20
+    source_agreement: 0.20
+  single_source_penalty: 0.85
+
+recommendation_thresholds:
+  min_confidence: 40.0
+  min_eligible_videos: 10
+  max_rights_risk: 45.0
+  max_production_risk: 55.0
+  max_top1_share: 0.65
+  min_demand_score: 35.0
+  min_supply_scarcity: 30.0
+  strong_opportunity_score: 75.0
+  strong_confidence: 70.0
+  promising_opportunity_score: 65.0
+  promising_confidence: 60.0
+  watchlist_momentum: 65.0
+
+quota:
+  search_list_daily_limit: 100
+  videos_batch_daily_limit: 10000
+  batch_size: 50
