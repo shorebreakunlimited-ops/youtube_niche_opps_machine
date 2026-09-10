@@ -149,6 +149,13 @@ class Database:
                 FOREIGN KEY(niche_id) REFERENCES niches(niche_id)
             );
 
+            CREATE TABLE IF NOT EXISTS quota_usage (
+                usage_date TEXT PRIMARY KEY,
+                search_calls_used INTEGER DEFAULT 0,
+                video_batch_units_used INTEGER DEFAULT 0,
+                last_updated TIMESTAMP DEFAULT CURRENT_TIMESTAMP
+            );
+
             CREATE INDEX IF NOT EXISTS idx_video_snapshots ON video_metric_snapshots(video_id, observed_at);
             CREATE INDEX IF NOT EXISTS idx_channel_snapshots ON channel_metric_snapshots(channel_id, observed_at);
             CREATE INDEX IF NOT EXISTS idx_search_ranks ON search_rank_observations(query, observed_at);
@@ -256,6 +263,17 @@ class Database:
                     now,
                 ),
             )
+
+    def get_videos_by_channel(self, channel_id: str) -> List[Dict[str, Any]]:
+        cur = self.conn.cursor()
+        cur.execute(
+            """
+            SELECT * FROM videos WHERE channel_id = ?
+            ORDER BY published_at DESC
+            """,
+            (channel_id,),
+        )
+        return [dict(row) for row in cur.fetchall()]
 
     def save_video_snapshot(self, snapshot: VideoMetricSnapshot) -> int:
         obs_at = (
@@ -460,5 +478,42 @@ class Database:
         )
         return [dict(row) for row in cur.fetchall()]
 
+    def get_quota_usage(self, usage_date: str) -> Dict[str, int]:
+        cur = self.conn.cursor()
+        cur.execute(
+            "SELECT search_calls_used, video_batch_units_used FROM quota_usage WHERE usage_date = ?",
+            (usage_date,),
+        )
+        row = cur.fetchone()
+        if not row:
+            return {"search_calls_used": 0, "video_batch_units_used": 0}
+        return {"search_calls_used": int(row[0]), "video_batch_units_used": int(row[1])}
+
+    def record_quota_consumption(
+        self, usage_date: str, search_calls: int = 0, video_batch_units: int = 0
+    ) -> None:
+        now = datetime.now(timezone.utc).isoformat()
+        with self.conn:
+            self.conn.execute(
+                """
+                INSERT INTO quota_usage (usage_date, search_calls_used, video_batch_units_used, last_updated)
+                VALUES (?, ?, ?, ?)
+                ON CONFLICT(usage_date) DO UPDATE SET
+                    search_calls_used = search_calls_used + excluded.search_calls_used,
+                    video_batch_units_used = video_batch_units_used + excluded.video_batch_units_used,
+                    last_updated = excluded.last_updated
+                """,
+                (usage_date, search_calls, video_batch_units, now),
+            )
+
+    # Convenient method aliases
+    upsert_channel = save_channel
+    upsert_video = save_video
+    record_search_rank_observation = record_search_rank
+
     def close(self) -> None:
         self.conn.close()
+
+
+# Alias for backward/forward naming compatibility
+NicheDatabase = Database

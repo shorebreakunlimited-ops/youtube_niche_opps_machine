@@ -1,4 +1,4 @@
-from src.storage.database import Database
-from src.storage.cache import RequestCache
+from src.storage.database import Database, NicheDatabase
+from src.storage.cache import RequestCache, SQLiteCache
 
-__all__ = ["Database", "RequestCache"]
+__all__ = ["Database", "NicheDatabase", "RequestCache", "SQLiteCache"]

@@ -9,11 +9,17 @@ from typing import Any, Optional
 
 
 class RequestCache:
-    def __init__(self, cache_db: str = "data/cache.db", default_ttl_seconds: int = 86400):
+    def __init__(
+        self,
+        cache_db: Optional[str] = None,
+        default_ttl_seconds: int = 86400,
+        db_path: Optional[str] = None,
+    ):
+        target_db = db_path or cache_db or "data/cache.db"
         self.default_ttl = default_ttl_seconds
-        if cache_db != ":memory:":
-            Path(cache_db).parent.mkdir(parents=True, exist_ok=True)
-        self.conn = sqlite3.connect(cache_db, check_same_thread=False)
+        if target_db != ":memory:":
+            Path(target_db).parent.mkdir(parents=True, exist_ok=True)
+        self.conn = sqlite3.connect(target_db, check_same_thread=False)
         self._init_schema()
 
     def _init_schema(self) -> None:
@@ -73,3 +79,8 @@ class RequestCache:
 
     def close(self) -> None:
         self.conn.close()
+
+
+# Alias for backward/forward naming compatibility
+SQLiteCache = RequestCache
+
