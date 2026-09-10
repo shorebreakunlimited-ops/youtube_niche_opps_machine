@@ -77,6 +77,11 @@ class RequestCache:
                 (key, payload_str, now, expires_at),
             )
 
+    def clear(self) -> None:
+        """Clear all entries in the cache."""
+        with self.conn:
+            self.conn.execute("DELETE FROM http_cache")
+
     def close(self) -> None:
         self.conn.close()
 

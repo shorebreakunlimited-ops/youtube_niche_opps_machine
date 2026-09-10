@@ -23,7 +23,7 @@ from src.validation.topic_depth import evaluate_topic_depth_and_runway
 
 
 def test_validator_uses_snapshot_velocity_when_available(tmp_path):
-    """Verify NicheValidator queries database snapshots and passes interval velocity into acceleration."""
+    """Verify NicheValidator queries database snapshots and that snapshot velocity materially affects acceleration."""
     db = NicheDatabase(db_path=str(tmp_path / "niche_snap.db"))
     cache = SQLiteCache(db_path=str(tmp_path / "cache.db"))
     yt_client = YouTubeClient(cache=cache, db=db, use_mock=True)
@@ -36,35 +36,45 @@ def test_validator_uses_snapshot_velocity_when_available(tmp_path):
         cache=cache,
     )
 
-    # First run seeds videos into database
-    res1 = validator.validate_niche("ai workflows", max_videos=10)
-    assert res1.sample_size == 10
+    # First run seeds videos into database without historical snapshots (cold start)
+    res_cold = validator.validate_niche("ai workflows", max_videos=10)
+    assert res_cold.sample_size == 10
+    cold_accel = res_cold.acceleration_score
 
-    # Inject multiple snapshots for videos in database
-    t1 = datetime(2026, 6, 1, 0, 0, 0, tzinfo=timezone.utc)
-    t2 = t1 + timedelta(days=10)
+    # Determine actual video ages from the first run
+    videos, _, _ = yt_client.search_videos("ai workflows", max_results=10)
+    recent_cutoff = 30.0
 
-    # Pick a video from mock results
-    cur = db.conn.cursor()
-    cur.execute("SELECT video_id FROM videos LIMIT 3")
-    vids = [r[0] for r in cur.fetchall()]
-    assert len(vids) == 3
+    recent_vids = [v.video_id for v in videos if v.video_age_days <= recent_cutoff]
+    baseline_vids = [v.video_id for v in videos if v.video_age_days > recent_cutoff]
 
-    for vid in vids:
-        db.save_video_snapshot(VideoMetricSnapshot(video_id=vid, observed_at=t1, views=10000))
-        db.save_video_snapshot(VideoMetricSnapshot(video_id=vid, observed_at=t2, views=30000))
+    assert len(recent_vids) > 0
+    assert len(baseline_vids) > 0
 
-    # Verify database computed snapshot velocities
-    snap_vels = db.get_snapshot_velocities_for_videos(vids)
-    assert len(snap_vels) == 3
+    # Inject snapshots: simulate explosive recent velocity for recent videos
+    # (+100,000 views over 5 days = 20,000 views/day)
+    t1 = datetime(2026, 8, 1, 0, 0, 0, tzinfo=timezone.utc)
+    t2 = t1 + timedelta(days=5)
+    for vid in recent_vids:
+        db.save_video_snapshot(VideoMetricSnapshot(video_id=vid, observed_at=t1, views=1000))
+        db.save_video_snapshot(VideoMetricSnapshot(video_id=vid, observed_at=t2, views=101000))
+
+    # Verify database computed snapshot velocities for those recent videos
+    snap_vels = db.get_snapshot_velocities_for_videos(recent_vids)
+    assert len(snap_vels) == len(recent_vids)
     for vid, vel in snap_vels.items():
-        assert pytest.approx(vel, 0.1) == 2000.0  # 20,000 views over 10 days = 2,000 views/day
+        assert pytest.approx(vel, 0.1) == 20000.0
 
-    # Second run should now incorporate snapshot velocities
-    res2 = validator.validate_niche("ai workflows", max_videos=10)
-    assert res2.sample_size == 10
-    # Acceleration should be active and valid
-    assert 0.0 <= res2.acceleration_score <= 100.0
+    # Second run should now incorporate snapshot velocities into validator
+    res_warm = validator.validate_niche("ai workflows", max_videos=10)
+    assert res_warm.sample_size == 10
+    warm_accel = res_warm.acceleration_score
+
+    # Behavioral proof: explosive snapshot velocity materially changes the validator result
+    # specifically, warm_accel must be strictly higher than cold_accel due to the snapshot injection
+    assert warm_accel != cold_accel
+    assert warm_accel > cold_accel
+    assert warm_accel >= 70.0
 
 
 def test_snapshot_coverage_is_not_hardcoded_zero(tmp_path):
@@ -97,7 +107,9 @@ def test_snapshot_coverage_is_not_hardcoded_zero(tmp_path):
         db.save_video_snapshot(VideoMetricSnapshot(video_id=vid, observed_at=t1, views=5000))
         db.save_video_snapshot(VideoMetricSnapshot(video_id=vid, observed_at=t2, views=12000))
 
-    # Re-validate with 100% snapshot coverage
+    # Re-validate with 100% snapshot coverage (clear cache to re-execute search persistence)
+    if cache:
+        cache.clear()
     res_warm = validator.validate_niche("cold niche", max_videos=5)
     # Warm run confidence should be strictly greater than or equal to cold run
     assert res_warm.confidence_score >= res_cold.confidence_score
@@ -231,7 +243,8 @@ def test_tier_b_is_age_adjusted_or_downgraded():
 
 
 def test_validator_uses_topic_depth_engine(tmp_path):
-    """Verify NicheValidator invokes evaluate_topic_depth_and_runway with semantic TF-IDF embeddings."""
+    """Verify NicheValidator invokes evaluate_topic_depth_and_runway and that output reflects semantic runway metrics."""
+    import json
     db = NicheDatabase(db_path=str(tmp_path / "niche_topic.db"))
     cache = SQLiteCache(db_path=str(tmp_path / "cache_topic.db"))
     yt_client = YouTubeClient(cache=cache, db=db, use_mock=True)
@@ -244,9 +257,38 @@ def test_validator_uses_topic_depth_engine(tmp_path):
         cache=cache,
     )
 
-    result = validator.validate_niche("python automation", max_videos=10)
-    # Repeatability score should be populated from topic depth engine
-    assert 0.0 <= result.repeatability_score <= 100.0
-    # Video ideas should be generated from topic depth 15-axis templates
-    assert len(result.video_ideas) >= 5
-    assert any("Automation" in idea or "Guide" in idea or "Python" in idea for idea in result.video_ideas)
+    clean_niche = "python automation"
+    result = validator.validate_niche(clean_niche, max_videos=10)
+
+    # 1. Independent run of evaluate_topic_depth_and_runway on the exact same inputs
+    video_titles = [v.title for v in yt_client.get_videos_batch([])]  # or from result
+    # We query videos saved in DB for this niche to replicate validator's exact input
+    cur = db.conn.cursor()
+    cur.execute("SELECT title FROM videos")
+    db_titles = [r[0] for r in cur.fetchall()]
+    suggestions = browser.get_autocomplete_suggestions(clean_niche)
+
+    ground_truth_metrics = evaluate_topic_depth_and_runway(
+        seed_topic=clean_niche,
+        video_titles=db_titles,
+        autocomplete_suggestions=suggestions,
+    )
+
+    # 2. Verify validator's repeatability score matches ground-truth topic depth engine calculation exactly
+    expected_score = float(ground_truth_metrics["repeatability_score"])
+    assert result.repeatability_score == expected_score
+
+    # 3. Verify topic_runway_metrics inside raw_payload_json match ground-truth values
+    raw_payload = json.loads(result.raw_payload_json)
+    assert "topic_runway_metrics" in raw_payload
+    topic_metrics = raw_payload["topic_runway_metrics"]
+    assert topic_metrics["axes_covered_count"] == ground_truth_metrics["axes_covered_count"]
+    assert topic_metrics["entropy_ratio"] == ground_truth_metrics["entropy_ratio"]
+    assert topic_metrics["inter_cluster_distance"] == ground_truth_metrics["inter_cluster_distance"]
+    assert topic_metrics["estimated_video_runway"] == ground_truth_metrics["estimated_video_runway"]
+
+    # 4. Video ideas must originate from the 15-axis templates evaluated in topic depth
+    ground_truth_angle_titles = [a["title"] for a in ground_truth_metrics["generated_video_angles"]]
+    # The first video ideas produced by validator should match the generated 15-axis angles
+    for idea in result.video_ideas[:3]:
+        assert idea in ground_truth_angle_titles or idea.title() in [s.title() for s in suggestions]

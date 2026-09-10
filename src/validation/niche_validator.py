@@ -298,6 +298,12 @@ class NicheValidator:
                     "p_hat_breakout": round(p_hat_breakout, 4),
                     "creator_penalty": round(creator_penalty, 2),
                     "view_quantiles": view_quantiles,
+                    "topic_runway_metrics": {
+                        "axes_covered_count": runway_metrics.get("axes_covered_count"),
+                        "entropy_ratio": runway_metrics.get("entropy_ratio"),
+                        "inter_cluster_distance": runway_metrics.get("inter_cluster_distance"),
+                        "estimated_video_runway": runway_metrics.get("estimated_video_runway"),
+                    },
                 }
             ),
         )

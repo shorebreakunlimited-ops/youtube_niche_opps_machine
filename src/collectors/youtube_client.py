@@ -1,7 +1,7 @@
 """YouTube Data API v3 client with strict quota accounting, 50-item batching, and caching."""
 
 from dataclasses import asdict
-from datetime import datetime, timezone
+from datetime import datetime, timezone, timedelta
 import json
 import logging
 import os
@@ -344,11 +344,16 @@ class YouTubeClient:
             median_recent_views=85000.0,
         )
 
-        run_id = f"mock_{uuid.uuid4().hex[:8]}"
+        # Generate staggered publication dates so some videos are recent (<=30d) and some baseline (>30d)
         now_dt = datetime.now(timezone.utc)
+        run_id = f"mock_{uuid.uuid4().hex[:8]}"
 
         for i in range(count):
             vid = f"mock_vid_{i+1:03d}"
+            # Even videos are recent (e.g. 5, 10, 15 days ago), odd videos are baseline (e.g. 45, 60 days ago)
+            days_ago = (5 + i * 2) if i % 2 == 0 else (40 + i * 5)
+            pub_date = (now_dt - timedelta(days=days_ago)).isoformat()
+
             if i == 0:
                 cid = incumbent_id
                 v_views = 120000
@@ -386,7 +391,7 @@ class YouTubeClient:
                 video_id=vid,
                 channel_id=cid,
                 title=f"{query.title()} - Practical Guide #{i+1}",
-                published_at="2026-08-10T00:00:00Z",
+                published_at=pub_date,
                 views=v_views,
                 likes=v_likes,
                 comments=v_comments,
