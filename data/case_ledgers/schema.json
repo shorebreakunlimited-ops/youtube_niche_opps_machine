@@ -1,44 +1,93 @@
 {
-  "version": "1.0",
-  "minimum_fields": [
-    "case_name",
-    "working_title",
-    "source_url",
-    "jurisdiction",
-    "incident_date",
-    "release_date",
-    "evidence_available",
-    "has_bodycam",
-    "has_interrogation",
-    "has_911_audio",
-    "has_court_records",
-    "has_sentencing_or_outcome",
-    "youtube_existing_video_count",
-    "youtube_top_video_views",
-    "covered_by_major_creator",
-    "fresh_angle",
-    "decision_chain_score",
-    "production_burden",
-    "risk_level",
-    "candidate_score",
-    "verdict",
-    "notes"
-  ],
-  "verdicts": ["avoid", "maybe", "strong"],
-  "tables": {
-    "poisoned_cases": {
-      "path": "poisoned_cases.csv",
-      "purpose": "avoid / only use with new evidence"
+  "candidate_cases": {
+    "required": [
+      "case_id",
+      "case_name",
+      "working_title",
+      "novelty",
+      "evidence",
+      "decision_chain",
+      "aftermath",
+      "packaging",
+      "production_fit",
+      "safety",
+      "candidate_score",
+      "verdict",
+      "poison_five_plus_over_500k",
+      "poison_covered_by_major_creator",
+      "poison_name_famous",
+      "poison_heavily_clipped",
+      "poison_no_new_update",
+      "poison_heavily_politicized",
+      "poison_needs_psych_claims",
+      "poison_poor_footage",
+      "poison_signal_count",
+      "verified_at",
+      "search_queries",
+      "videos_reviewed",
+      "videos_over_500k",
+      "top_video_views",
+      "top_video_url",
+      "major_creator_matches",
+      "data_source"
+    ],
+    "score_axes_0_to_10": [
+      "novelty",
+      "evidence",
+      "decision_chain",
+      "aftermath",
+      "packaging",
+      "production_fit",
+      "safety"
+    ],
+    "score_weights": {
+      "novelty": 20,
+      "evidence": 20,
+      "decision_chain": 15,
+      "aftermath": 15,
+      "packaging": 15,
+      "production_fit": 10,
+      "safety": 5
     },
-    "candidate_cases": {
-      "path": "candidate_cases.csv",
-      "purpose": "score and rank for production"
+    "verdicts": [
+      "strong",
+      "maybe",
+      "avoid"
+    ],
+    "parent_child": {
+      "parent_case_id": "optional; set for child/subcases",
+      "relationship": [
+        "standalone",
+        "parent",
+        "child"
+      ]
     }
   },
-  "scoring": {
-    "candidate_score_range": [0, 100],
-    "decision_chain_score_range": [0, 10],
-    "strong_threshold": 75,
-    "maybe_threshold": 60
+  "case_sources": {
+    "required": [
+      "case_id",
+      "source_type",
+      "source_url",
+      "source_title"
+    ],
+    "strong_source_types": [
+      "bodycam_raw",
+      "court_police_record",
+      "independent_reporting",
+      "legal_outcome"
+    ]
+  },
+  "youtube_metrics": {
+    "never_use": [
+      "est.",
+      "estimated"
+    ],
+    "unknown": [
+      "",
+      "unknown",
+      "null",
+      "none"
+    ],
+    "verified_when": "data_source is real AND videos_reviewed/videos_over_500k are numeric"
   }
 }

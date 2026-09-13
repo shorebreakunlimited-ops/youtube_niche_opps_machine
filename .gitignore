@@ -3,15 +3,11 @@ __pycache__/
 *$py.class
 .pytest_cache/
 *.db
-<<<<<<< HEAD
 data/*
 !data/case_ledgers/
 !data/case_ledgers/**
-=======
-data/
 ingest/data/
 ingest/downloads/
 ingest/keyword_hits.csv
 ingest/target_urls.txt
 *.sqlite3
->>>>>>> origin/main

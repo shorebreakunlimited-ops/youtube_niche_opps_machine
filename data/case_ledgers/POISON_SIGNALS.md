@@ -1,17 +1,19 @@
 # Poison Signals
 
-A case is **poisoned** if it hits **two or more** of these:
+A case is **poisoned** if it hits **two or more** structured poison fields:
 
-| Poison Signal | Meaning |
+| Field | Meaning |
 |---|---|
-| 5+ major YouTube breakdowns over 500K views | Hard to rank, hard to feel fresh |
-| Covered by EWU / JCS / Red Tree / Explore With Us / Code Blue / Midwest | Audience already has a definitive version |
-| Name-driven case already famous | Search traffic exists, but novelty appetite is low |
-| Primary evidence already heavily clipped on TikTok/Shorts | Longform fights audience familiarity |
-| No new document / bodycam / court update | No new reason to watch |
-| Heavily politicized | Comments become ideology war, not analysis |
-| Requires clinical psychology claims to be interesting | Risky and generic |
-| Footage quality is poor or fragmented | Hard production burden |
+| `poison_five_plus_over_500k` | 5+ relevant YouTube videos over 500K views |
+| `poison_covered_by_major_creator` | Covered by a major creator (EWU / JCS / Red Tree / etc.) |
+| `poison_name_famous` | Name-driven case already famous |
+| `poison_heavily_clipped` | Primary evidence already heavily clipped on TikTok/Shorts |
+| `poison_no_new_update` | No new document / bodycam / court update |
+| `poison_heavily_politicized` | Heavily politicized; comments become ideology war |
+| `poison_needs_psych_claims` | Requires clinical psychology claims to be interesting |
+| `poison_poor_footage` | Footage quality is poor or fragmented |
+
+`count_poison_signals()` runs during CSV load/validation. Rows with **2+** true poison fields cannot keep a `strong` or `maybe` verdict. `launch_shortlist()` enforces the same rule independently of the CSV verdict.
 
 ## Avoid-first categories (seed poisoned ledger)
 
@@ -38,7 +40,3 @@ A case is **poisoned** if it hits **two or more** of these:
 | Welfare check / mental health escalation | Decision-chain rich |
 | DUI with unusual legal aftermath | Easy entry, strong consequence framing |
 | Missing person solved by patrol/bodycam detail | Mystery + procedure + aftermath |
-| False report / swatting / misuse of 911 | Fresh, procedural, consequence-heavy |
-| Probable cause search dispute | Legal analysis without psychologist cosplay |
-| School / airport / public facility incident | Instant setting comprehension |
-| Cases with new FOIA release in last 30–90 days | Freshness without FOIA as the whole spine |

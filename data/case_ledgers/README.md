@@ -8,6 +8,7 @@ Operational research system for bodycam / court-record episode selection.
 |---|---|
 | `poisoned_cases.csv` | Avoid / only reopen with genuinely new evidence |
 | `candidate_cases.csv` | Score and rank for production |
+| `case_sources.csv` | Source matrix keyed by `case_id` |
 
 ## Core rule
 
@@ -15,41 +16,54 @@ Do **not** start with famous cases. Start where the footage is clickable and the
 
 A known-enough incident with raw evidence but **no dominant explanatory package** beats an unknown case with thin aftermath.
 
+## Reproducible scoring
+
+Each candidate stores integer 0–10 axes:
+
+`novelty`, `evidence`, `decision_chain`, `aftermath`, `packaging`, `production_fit`, `safety`
+
+`candidate_score` is a weighted 0–100 integer. Loader **rejects** rows where stored `candidate_score` or `verdict` does not match the recalculated result.
+
+Weights: novelty 20, evidence 20, decision_chain 15, aftermath 15, packaging 15, production_fit 10, safety 5.
+
+Verdicts: `strong` (≥75) / `maybe` (≥60) / `avoid` (<60). **2+ poison signals force `avoid`.**
+
 ## Poison rule
 
-A case is poisoned if it hits **two or more** poison signals (see `POISON_SIGNALS.md`).
+Poison signals are stored as structured boolean fields. `count_poison_signals()` runs on load. A candidate with **2+** poison signals cannot keep `strong` or `maybe`. `launch_shortlist()` re-checks independently of the CSV verdict.
 
-## First-pass scoring (brutal)
+## YouTube metrics (verified only)
 
-| Axis | Question |
-|---|---|
-| Novelty | Has YouTube already had its definitive version? |
-| Evidence | Bodycam, court docs, arrest records, local reporting, sentencing? |
-| Decision Chain | Can we identify 3–5 turning points? |
-| Aftermath | Can we answer what happened after? |
-| Packaging | Can the title sell a reversal/consequence without naming the case? |
-| Production Fit | Can we make it in 1–3 days? |
-| Risk | Defamatory, politicized, or speculation-dependent? |
+Required fields:
 
-`candidate_score` is a 0–100 composite. Verdicts: `strong` / `maybe` / `avoid`.
+`verified_at`, `search_queries`, `videos_reviewed`, `videos_over_500k`, `top_video_views`, `top_video_url`, `major_creator_matches`, `data_source`
 
-## Episode format to hunt for
+Unknown values are empty / `unknown` / null — never `est.`. Strong / launch-ready status requires verified YouTube metrics from a real pipeline source (YouTube Data API v3 in this repo).
 
-1. Cold open: the irreversible moment  
-2. Context: why police were there  
-3. Decision chain: 4 turning points  
-4. Procedure/legal layer: what mattered  
-5. Aftermath: charges, lawsuit, sentence, discipline, dismissal, or policy consequence  
-6. Final read: what the footage proves — and what it does not  
+## Source discipline (strong candidates)
+
+Each strong candidate requires all four source types in `case_sources.csv`:
+
+1. `bodycam_raw`
+2. `court_police_record`
+3. `independent_reporting`
+4. `legal_outcome`
+
+Unsupported factual claims are not scored as evidence.
+
+## Parent / child cases
+
+Cpl. Matthew Lau (`C002`) is the parent investigation. Anthony Jameson (`C003`) is a **child/subcase** and is excluded from `launch_shortlist()`.
 
 ## Launch profile
 
-10–40 minute bodycam/court-record story, one clean decision chain, documented aftermath, not dominated by a famous creator, titleable without the suspect’s name.
+10–40 minute bodycam/court-record story, one clean decision chain, documented aftermath, verified YouTube under-packaging, not dominated by a famous creator, titleable without the suspect’s name.
 
 ## CLI
 
 ```bash
-python -m src.case_ledgers.cli list-candidates --min-score 70
-python -m src.case_ledgers.cli list-poisoned
-python -m src.case_ledgers.cli rank
+python -m src.case_ledgers list-candidates --min-score 70
+python -m src.case_ledgers list-poisoned
+python -m src.case_ledgers rank
+python -m src.case_ledgers json-shortlist
 ```

@@ -48,3 +48,9 @@ Rule applied: do not start with famous cases; prioritize clickable footage + una
 3. DUI/probable-cause mismatches where paperwork and video diverge  
 4. False-report / misuse-of-911 cases with sentencing, excluding celebrity defendants  
 5. Re-check YouTube exact video count + top views before scripting any `strong` row  
+
+
+## Dedup / parent-child
+
+- **C002 Cpl. Matthew Lau** = parent investigation (launch candidate).
+- **C003 Anthony Jameson** = child/subcase inside the Lau pattern — scored for tracking, excluded from `launch_shortlist()`.
