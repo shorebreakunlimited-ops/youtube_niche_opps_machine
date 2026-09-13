@@ -1,0 +1,5 @@
+source_name,source_url,source_type,priority,notes,enabled
+KHON News,https://www.youtube.com/@KHONNewsHawaii,channel,2,local Hawaii news,false
+KITV,https://www.youtube.com/@KITV,channel,2,local Hawaii news,false
+Hawaii News Now,https://www.youtube.com/@HawaiiNewsNow,channel,2,local Hawaii news,false
+Smoke Test Videos,config/channels.smoke.txt,video_list,1,controlled test,true

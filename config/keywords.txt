@@ -1,0 +1,19 @@
+# Default FTS seed stems/tokens (first-pass discovery).
+# Prefer stems/tokens over multi-word phrases at index search time.
+body*
+camera
+worn
+footage
+shoot*
+knife
+gun
+armed
+pursuit
+chase
+suspect
+taser
+k9
+officer
+police
+deputy
+arrest
