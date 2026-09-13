@@ -3,4 +3,6 @@ __pycache__/
 *$py.class
 .pytest_cache/
 *.db
-data/
+data/*
+!data/case_ledgers/
+!data/case_ledgers/**

@@ -1,0 +1,44 @@
+{
+  "version": "1.0",
+  "minimum_fields": [
+    "case_name",
+    "working_title",
+    "source_url",
+    "jurisdiction",
+    "incident_date",
+    "release_date",
+    "evidence_available",
+    "has_bodycam",
+    "has_interrogation",
+    "has_911_audio",
+    "has_court_records",
+    "has_sentencing_or_outcome",
+    "youtube_existing_video_count",
+    "youtube_top_video_views",
+    "covered_by_major_creator",
+    "fresh_angle",
+    "decision_chain_score",
+    "production_burden",
+    "risk_level",
+    "candidate_score",
+    "verdict",
+    "notes"
+  ],
+  "verdicts": ["avoid", "maybe", "strong"],
+  "tables": {
+    "poisoned_cases": {
+      "path": "poisoned_cases.csv",
+      "purpose": "avoid / only use with new evidence"
+    },
+    "candidate_cases": {
+      "path": "candidate_cases.csv",
+      "purpose": "score and rank for production"
+    }
+  },
+  "scoring": {
+    "candidate_score_range": [0, 100],
+    "decision_chain_score_range": [0, 10],
+    "strong_threshold": 75,
+    "maybe_threshold": 60
+  }
+}
