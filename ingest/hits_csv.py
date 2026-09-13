@@ -30,10 +30,6 @@ def write_keyword_hits(
     default_status: str = "new",
     preserve_existing: bool = True,
 ) -> list[dict]:
-    """
-    Write keyword hits CSV. Preserves prior human review_status / notes when
-    the same video_id + matched_keyword already exists.
-    """
     path = Path(path)
     path.parent.mkdir(parents=True, exist_ok=True)
 
@@ -74,13 +70,25 @@ def write_keyword_hits(
     return rows
 
 
+def append_keyword_hit_row(path: Path | str, row: dict) -> None:
+    """Incrementally append one hit row (creates header if needed)."""
+    path = Path(path)
+    path.parent.mkdir(parents=True, exist_ok=True)
+    new_file = not path.exists() or path.stat().st_size == 0
+    with path.open("a", newline="", encoding="utf-8") as fh:
+        writer = csv.DictWriter(fh, fieldnames=KEYWORD_HIT_FIELDS)
+        if new_file:
+            writer.writeheader()
+        out = {k: row.get(k, "") for k in KEYWORD_HIT_FIELDS}
+        writer.writerow(out)
+
+
 def read_keyword_hit_rows(path: Path | str) -> list[dict]:
     path = Path(path)
     if not path.exists():
         return []
     with path.open(newline="", encoding="utf-8") as fh:
-        reader = csv.DictReader(fh)
-        return [dict(row) for row in reader]
+        return [dict(row) for row in csv.DictReader(fh)]
 
 
 def filter_downloadable_rows(rows: Iterable[dict]) -> list[dict]:
@@ -115,8 +123,18 @@ def write_target_urls(
         if max_target_urls is not None and len(urls) >= max_target_urls:
             break
     with path.open("w", encoding="utf-8") as fh:
-        fh.write("# Auto-exported from keyword_hits with review_status in "
-                 "{download, episode_candidate}\n")
+        fh.write(
+            "# Auto-exported from keyword_hits with review_status in "
+            "{download, episode_candidate}\n"
+        )
         for url in urls:
             fh.write(url + "\n")
     return urls
+
+
+def status_distribution(rows: Sequence[dict]) -> dict[str, int]:
+    dist: dict[str, int] = {}
+    for row in rows:
+        status = (row.get("review_status") or "").strip() or "(empty)"
+        dist[status] = dist.get(status, 0) + 1
+    return dist

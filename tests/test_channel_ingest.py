@@ -7,15 +7,16 @@ from pathlib import Path
 
 import pytest
 
-from ingest.fts_index import VideoDoc, VideoFTSIndex, _fts_query_for_term, load_keywords
+from ingest.fts_index import KeywordHit, VideoDoc, VideoFTSIndex, _fts_query_for_term, load_keywords
 from ingest.hits_csv import (
     filter_downloadable_rows,
     read_keyword_hit_rows,
+    status_distribution,
     write_keyword_hits,
     write_target_urls,
 )
 from ingest.sources import Source, load_sources, select_sources
-from ingest import channel_ingest
+from ingest import channel_ingest, download
 
 
 def test_load_sources_and_default_enabled_only(tmp_path: Path):
@@ -88,13 +89,10 @@ def test_fts_stem_query_and_search(tmp_path: Path):
         hits = index.search_keywords(["body*", "officer", "pasta"], max_search_hits=10)
     ids = {h.video_id for h in hits}
     assert "aaa" in ids
-    # pasta may match bbb; body/officer should not require phrases
     assert any(h.matched_keyword == "body*" for h in hits)
 
 
 def test_keyword_hits_preserve_review_status(tmp_path: Path):
-    from ingest.fts_index import KeywordHit
-
     path = tmp_path / "keyword_hits.csv"
     hits = [
         KeywordHit(
@@ -110,17 +108,17 @@ def test_keyword_hits_preserve_review_status(tmp_path: Path):
         )
     ]
     write_keyword_hits(path, hits)
-    # Human marks download
     rows = read_keyword_hit_rows(path)
     rows[0]["review_status"] = "download"
     with path.open("w", newline="", encoding="utf-8") as fh:
-        writer = csv.DictWriter(fh, fieldnames=rows[0].keys())
+        writer = csv.DictWriter(fh, fieldnames=list(rows[0].keys()))
         writer.writeheader()
         writer.writerows(rows)
 
     write_keyword_hits(path, hits, preserve_existing=True)
     preserved = read_keyword_hit_rows(path)
     assert preserved[0]["review_status"] == "download"
+    assert status_distribution(preserved)["download"] == 1
 
     downloadable = filter_downloadable_rows(preserved)
     assert len(downloadable) == 1
@@ -166,11 +164,7 @@ def test_oembed_fallback_builds_doc(monkeypatch):
                 b'"author_name":"Hawaii News Now"}'
             )
 
-    monkeypatch.setattr(
-        extract.urllib.request,
-        "urlopen",
-        lambda *a, **k: _Resp(),
-    )
+    monkeypatch.setattr(extract.urllib.request, "urlopen", lambda *a, **k: _Resp())
     doc = extract.fetch_oembed_doc(
         "https://www.youtube.com/watch?v=aaaaaaaaaaa",
         source_name="Smoke",
@@ -179,3 +173,36 @@ def test_oembed_fallback_builds_doc(monkeypatch):
     assert doc.video_id == "aaaaaaaaaaa"
     assert "bodycam" in doc.title.lower()
     assert doc.channel == "Hawaii News Now"
+
+
+def test_download_dry_run_writes_zero_files(tmp_path: Path):
+    hits = tmp_path / "hits.csv"
+    hits.write_text(
+        "video_id,url,title,channel,source_name,upload_date,matched_keyword,snippet,review_status,review_notes\n"
+        "abc,https://www.youtube.com/watch?v=abcdefghijk,Bodycam,N,S,,body*,x,download,\n",
+        encoding="utf-8",
+    )
+    out = tmp_path / "downloads"
+    out.mkdir()
+    before = list(out.iterdir())
+    rc = download.run(
+        [
+            "--hits-csv",
+            str(hits),
+            "--target-urls",
+            str(tmp_path / "targets.txt"),
+            "--output-dir",
+            str(out),
+            "--max-target-urls",
+            "10",
+            "--max-storage-mb",
+            "10",
+            "--dry-run",
+            "--report-json",
+            str(tmp_path / "report.json"),
+            "--failure-log",
+            str(tmp_path / "fail.csv"),
+        ]
+    )
+    assert rc == 0
+    assert list(out.iterdir()) == before

@@ -6,6 +6,7 @@ import json
 import re
 import urllib.error
 import urllib.request
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Callable, Sequence
 from urllib.parse import quote, urlparse
@@ -19,6 +20,14 @@ except ImportError:  # pragma: no cover
 
 
 _WATCH_ID_RE = re.compile(r"(?:v=|/shorts/|/live/|youtu\.be/)([A-Za-z0-9_-]{6,})")
+
+
+@dataclass
+class ExtractStats:
+    requested: int = 0
+    indexed: int = 0
+    failed: int = 0
+    skipped: int = 0
 
 
 def load_url_list(path: Path | str) -> list[str]:
@@ -36,7 +45,6 @@ def video_id_from_url(url: str) -> str | None:
     match = _WATCH_ID_RE.search(url)
     if match:
         return match.group(1)
-    # Bare 11-char ids sometimes appear in lists.
     if re.fullmatch(r"[A-Za-z0-9_-]{11}", url.strip()):
         return url.strip()
     return None
@@ -66,7 +74,6 @@ def _entry_to_doc(entry: dict, source_name: str) -> VideoDoc | None:
         or entry.get("url")
         or f"https://www.youtube.com/watch?v={video_id}"
     )
-    # Flat playlist entries may only have url as id.
     if url and not url.startswith("http"):
         url = f"https://www.youtube.com/watch?v={video_id}"
     return VideoDoc(
@@ -82,10 +89,6 @@ def _entry_to_doc(entry: dict, source_name: str) -> VideoDoc | None:
 
 
 def fetch_oembed_doc(url: str, *, source_name: str) -> VideoDoc | None:
-    """
-    Lightweight metadata fallback when yt-dlp player extraction is bot-blocked.
-    Uses YouTube oEmbed (title + author). Good enough for triage FTS.
-    """
     url = _normalize_url(url)
     video_id = video_id_from_url(url)
     if not video_id:
@@ -107,11 +110,21 @@ def fetch_oembed_doc(url: str, *, source_name: str) -> VideoDoc | None:
         video_id=video_id,
         url=f"https://www.youtube.com/watch?v={video_id}",
         title=title,
-        description=title,  # oEmbed has no description; title still yields FTS tokens
+        description=title,
         channel=channel,
         source_name=source_name,
     )
 
+
+
+
+def normalize_channel_url(url: str) -> str:
+    """Prefer /videos tab so playlistend caps apply to uploads catalog."""
+    raw = url.strip().rstrip("/")
+    if "youtube.com/@" in raw or "youtube.com/channel/" in raw or "youtube.com/c/" in raw:
+        if not raw.endswith("/videos") and not raw.endswith("/streams") and not raw.endswith("/shorts"):
+            return raw + "/videos"
+    return raw
 
 def extract_docs_from_url(
     url: str,
@@ -119,16 +132,18 @@ def extract_docs_from_url(
     source_name: str,
     max_index_videos: int | None = None,
     flat_playlist: bool = True,
+    on_doc: Callable[[VideoDoc, int], None] | None = None,
+    stats: ExtractStats | None = None,
 ) -> list[VideoDoc]:
     """
     Extract video metadata via yt-dlp.
-    For channels/playlists, max_index_videos hard-caps catalog size.
-    Falls back to oEmbed for single-video URLs when yt-dlp is blocked.
+    For channels/playlists, max_index_videos hard-caps catalog size via playlistend
+    AND a local break. Raises RuntimeError if the cap is ignored.
     """
     if yt_dlp is None:
         raise RuntimeError("yt-dlp is required. Install with: pip install yt-dlp")
 
-    url = _normalize_url(url)
+    url = normalize_channel_url(_normalize_url(url))
     opts: dict = {
         "quiet": True,
         "no_warnings": True,
@@ -140,33 +155,79 @@ def extract_docs_from_url(
         opts["playlistend"] = max(0, int(max_index_videos))
 
     docs: list[VideoDoc] = []
+    local_stats = stats or ExtractStats()
+
     with yt_dlp.YoutubeDL(opts) as ydl:
         info = ydl.extract_info(url, download=False)
         if info is None:
+            local_stats.requested += 1
             fallback = fetch_oembed_doc(url, source_name=source_name)
-            return [fallback] if fallback else []
+            if fallback:
+                docs.append(fallback)
+                local_stats.indexed += 1
+                if on_doc:
+                    on_doc(fallback, len(docs))
+            else:
+                local_stats.failed += 1
+            return docs
+
         entries = info.get("entries")
         if entries is None:
+            local_stats.requested += 1
             doc = _entry_to_doc(info, source_name)
             if doc and (doc.title or doc.description):
-                return [doc]
+                docs.append(doc)
+                local_stats.indexed += 1
+                if on_doc:
+                    on_doc(doc, len(docs))
+                return docs
             fallback = fetch_oembed_doc(url, source_name=source_name)
-            return [fallback] if fallback else ([doc] if doc else [])
+            if fallback:
+                docs.append(fallback)
+                local_stats.indexed += 1
+                if on_doc:
+                    on_doc(fallback, len(docs))
+            elif doc:
+                docs.append(doc)
+                local_stats.indexed += 1
+                if on_doc:
+                    on_doc(doc, len(docs))
+            else:
+                local_stats.failed += 1
+            return docs
 
         for entry in entries:
+            local_stats.requested += 1
             if entry is None:
+                local_stats.failed += 1
                 continue
             doc = _entry_to_doc(entry, source_name)
             if not doc:
+                local_stats.failed += 1
                 continue
             docs.append(doc)
+            local_stats.indexed += 1
+            if on_doc:
+                on_doc(doc, len(docs))
             if max_index_videos is not None and len(docs) >= max_index_videos:
                 break
 
     if not docs:
+        local_stats.requested = max(local_stats.requested, 1)
         fallback = fetch_oembed_doc(url, source_name=source_name)
         if fallback:
-            return [fallback]
+            docs.append(fallback)
+            local_stats.indexed += 1
+            if on_doc:
+                on_doc(fallback, len(docs))
+        else:
+            local_stats.failed += 1
+
+    if max_index_videos is not None and len(docs) > max_index_videos:
+        raise RuntimeError(
+            f"Catalog extraction ignored --max-index-videos={max_index_videos} "
+            f"(got {len(docs)}). Stopping."
+        )
     return docs
 
 
@@ -175,12 +236,14 @@ def enrich_docs(
     *,
     source_name: str | None = None,
     progress: Callable[[str], None] | None = None,
+    on_doc: Callable[[VideoDoc, int], None] | None = None,
+    stats: ExtractStats | None = None,
 ) -> list[VideoDoc]:
-    """Fetch full metadata for flat playlist stubs (title/description)."""
     if yt_dlp is None:
         raise RuntimeError("yt-dlp is required. Install with: pip install yt-dlp")
 
     enriched: list[VideoDoc] = []
+    local_stats = stats or ExtractStats()
     opts = {
         "quiet": True,
         "no_warnings": True,
@@ -195,7 +258,6 @@ def enrich_docs(
             info = ydl.extract_info(doc.url, download=False)
             full = _entry_to_doc(info, src) if info else None
             if full and (full.title or full.description):
-                # Prefer richer description when present; otherwise keep prior text.
                 if not full.description and doc.description:
                     full = VideoDoc(
                         video_id=full.video_id,
@@ -208,23 +270,15 @@ def enrich_docs(
                         duration=full.duration if full.duration is not None else doc.duration,
                     )
                 enriched.append(full)
+                if on_doc:
+                    on_doc(full, len(enriched))
                 continue
 
             oembed = fetch_oembed_doc(doc.url, source_name=src)
             if oembed:
-                # Preserve any existing description from flat extract.
-                if doc.description and not oembed.description:
-                    oembed = VideoDoc(
-                        video_id=oembed.video_id,
-                        url=oembed.url,
-                        title=oembed.title or doc.title,
-                        description=doc.description,
-                        channel=oembed.channel or doc.channel,
-                        source_name=oembed.source_name,
-                        upload_date=doc.upload_date,
-                        duration=doc.duration,
-                    )
-                elif doc.description and oembed.description == oembed.title:
+                if doc.description and (
+                    not oembed.description or oembed.description == oembed.title
+                ):
                     oembed = VideoDoc(
                         video_id=oembed.video_id,
                         url=oembed.url,
@@ -236,19 +290,17 @@ def enrich_docs(
                         duration=doc.duration,
                     )
                 enriched.append(oembed)
+                if on_doc:
+                    on_doc(oembed, len(enriched))
             else:
                 enriched.append(doc)
+                local_stats.skipped += 1
+                if on_doc:
+                    on_doc(doc, len(enriched))
     return enriched
 
 
-def resolve_source_urls(
-    source_url: str,
-    *,
-    repo_root: Path,
-) -> list[str]:
-    """
-    Resolve a source_url that may be a channel URL or a local video_list file.
-    """
+def resolve_source_urls(source_url: str, *, repo_root: Path) -> list[str]:
     raw = source_url.strip()
     parsed = urlparse(raw)
     if parsed.scheme in {"http", "https"}:
@@ -260,3 +312,7 @@ def resolve_source_urls(
     if not path.exists():
         raise FileNotFoundError(f"video_list path not found: {path}")
     return load_url_list(path)
+
+
+# Alias used by channel_ingest controlled lists
+load_url_list = load_url_list

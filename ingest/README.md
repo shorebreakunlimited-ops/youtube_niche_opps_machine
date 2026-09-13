@@ -9,54 +9,45 @@ source candidate → small index test → keyword yield → human review → tar
 ## Safe default
 
 ```bash
-python ingest/channel_ingest.py
+python3 ingest/channel_ingest.py
 ```
 
-Runs **only enabled** sources from `config/sources.csv`. Full local-news channels
-(KHON / KITV / HNN) ship **disabled**.
+Runs **only enabled** sources from `config/sources.csv`.
+KHON / KITV / Hawaii News Now ship **disabled**.
 
-## Controlled smoke test
+## Controlled channel test (does not enable globally)
 
 ```bash
-python ingest/channel_ingest.py \
-  --channels-file config/channels.smoke.txt \
-  --keywords-file config/keywords.smoke.txt \
+python3 ingest/channel_ingest.py \
+  --include-disabled \
+  --source "KHON News" \
+  --max-index-videos 100 \
   --max-search-hits 100 \
   --max-target-urls 10
 ```
 
-Then inspect `ingest/keyword_hits.csv` and set `review_status` to one of:
-
-| status | meaning |
-| --- | --- |
-| `new` | unscored |
-| `watch` | needs human watch |
-| `download` | approved for storage |
-| `reject` | discard |
-| `episode_candidate` | likely episode material |
-
-## Intentional full-channel index test
-
-```bash
-python ingest/channel_ingest.py \
-  --include-disabled \
-  --source "KHON News" \
-  --max-index-videos 10 \
-  --max-search-hits 100 \
-  --jobs 2
-```
+Smoke result prints:
+- videos requested / indexed / failed / skipped
+- runtime per source
+- FTS hit count
+- unique videos after dedupe
+- review_status distribution
+- exported target count
 
 ## Limits (do not use `--limit`)
 
-- `--max-index-videos` — hard catalog cap per source
+- `--max-index-videos` — hard catalog cap (aborts if exceeded)
 - `--max-search-hits` — hard FTS hit cap
 - `--max-target-urls` — hard approved URL export/download cap
 
 ## Gated download
 
 ```bash
-python ingest/download.py --dry-run
-python ingest/download.py --max-target-urls 10
+python3 ingest/download.py --dry-run --max-target-urls 10 --max-storage-mb 500
 ```
 
-Downloader **only** pulls rows marked `download` or `episode_candidate`.
+Downloader only pulls `download` / `episode_candidate`.
+Real downloads require `--allow-download` and respect `--max-storage-mb`.
+Failures are written to `download_failures.csv` + `download_report.json`.
+
+KITV / Hawaii News Now: run only after KHON controlled test succeeds.

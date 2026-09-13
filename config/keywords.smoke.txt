@@ -1,5 +1,5 @@
 # FTS seed stems/tokens for first-pass discovery.
-# Phrase filters belong on the exported CSV later — not here.
+# Phrase filters belong on exported CSV later — not here.
 body*
 camera
 worn
