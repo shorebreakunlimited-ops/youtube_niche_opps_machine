@@ -4,3 +4,8 @@ __pycache__/
 .pytest_cache/
 *.db
 data/
+ingest/data/
+ingest/downloads/
+ingest/keyword_hits.csv
+ingest/target_urls.txt
+*.sqlite3
