@@ -1,0 +1,20 @@
+claim_id,case,claim,classification,source_ids,verification
+BET-C01,Bethel,"On Dec. 23, 2023 Murphy and another officer approached Mael; Mael raised his hands; Murphy tried to remove him and struck him twice.",established by conviction/prosecution record,BET-P01,verified
+BET-C02,Bethel,"After a low-speed pursuit officers surrounded the vehicle, broke windows, used pepper spray and Tasers; Murphy struck Mael more than 20 times.",established by conviction/prosecution record,BET-P01,verified
+BET-C03,Bethel,Body-camera footage did not show Mael or the vehicle striking or dragging Murphy.,established by conviction/prosecution record,BET-P01,verified
+BET-C04,Bethel,The civil pleading alleged permanent brain damage and negligent hiring/retention/training.,allegation only,BET-S01,verified as allegation; complaint copy missing
+BET-C05,Bethel,The Mael civil matter settled for $7M; Kerr separately settled for $3M; combined total $10M across two incidents.,reported settlement fact,BET-S03,verified by secondary report; executed agreements missing
+BET-C06,Bethel,A jury convicted Murphy on three misdemeanor counts.,government/agency record,BET-P01,verified
+BET-C07,Bethel,Murphy received 100 days confinement and 150 hours community service under an SIS.,news report of court event,BET-S05,verified by reporting; signed judgment/sentencing order missing
+BET-C08,Bethel,Three officers at the scene captured footage; Murphy camera was inactive initially; Bouma camera captured initial stop.,reported charging-document contents,BET-S02; BET-S01,partly verified; third officer identity and native files missing
+BET-C09,Bethel,The footage automatically defeated qualified immunity.,unsupported legal conclusion,none,removed
+SOL-C01,Solano,The agency published an 18:47 AXON body-camera video and 43:01 in-car video.,agency-published footage,SOL-Y01; SOL-Y02,verified availability and durations
+SOL-C02,Solano,The agency and news reports called the bodycam release full-length/unedited.,attributed agency statement,SOL-S01; SOL-S02,verified attribution; independent authenticity/completeness not established
+SOL-C03,Solano,The public bodycam is McCampbell’s; McDowell footage was not released and its existence/activation remains disputed in public sources.,footage provenance plus reporting,SOL-Y01; SOL-S04,verified with unresolved gap
+SOL-C04,Solano,"Porter alleged punching, hair pulling, unlawful seizure, excessive force and false reporting.",plaintiff allegations,SOL-A01; SOL-A02,verified as allegations only
+SOL-C05,Solano,The court granted Porter summary judgment on unlawful search against McCampbell and granted defendants judgment on several other claims; other claims remained disputed.,judicial finding/ruling,SOL-P01,verified
+SOL-C06,Solano,The footage automatically defeated qualified immunity.,unsupported overstatement,SOL-P01,removed; order addresses claims individually and is mixed
+SOL-C07,Solano,The federal matter settled for $17M total; the court approved $1.7M gross for two minors.,judicial settlement approval,SOL-P03,verified; executed agreement missing
+SOL-C08,Solano,Deputies stated Porter resisted/struck a deputy; public video does not clearly resolve all of the struggle.,deputy/agency statement plus observable limitation,SOL-S02; SOL-S04,verified as attributed statement/unresolved dispute
+SAT-C01,Both,Recorded YouTube exports yielded zero relevant Bethel videos and 22 manually verified Solano competitors in the corrected table.,result-export audit,YT-EXP-01; research/youtube_saturation_corrected.csv,"verified for recorded queries, not exhaustive platform census"
+SAT-C02,Solano,"Highest observed relevant Solano video had 435,478 views and four sampled videos covered the 2025 settlement.",result-export audit,SOL-Y19; SOL-Y20; SOL-Y21; SOL-Y22,verified as observed 2026-09-14

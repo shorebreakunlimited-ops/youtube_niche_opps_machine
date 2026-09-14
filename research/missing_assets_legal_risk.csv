@@ -1,0 +1,13 @@
+risk_id,case,missing_asset_or_risk,severity,impact,mitigation,status
+BET-M01,Bethel,Native files for all three cameras,critical,Identity/continuity/provenance and edit decisions cannot be verified.,Submit narrow BPD records request; seek rolling production and fee estimate.,open
+BET-M02,Bethel,Third officer identity,high,Cannot label every angle accurately.,"Request CAD, roster, reports and evidence index.",open
+BET-M03,Bethel,"Criminal docket number, charging document, judgment, sentencing order",critical,Primary legal record package incomplete.,"Court clerk/eAccess request by party, event date and Aug. 2024 filing; obtain certified copies.",open
+BET-M04,Bethel,Mael civil complaint/docket and executed settlement,critical,Settlement terms/release/confidentiality not verified from primary records.,Request Bethel Superior Court file and City executed agreements/payment authorization.,open
+BET-M05,Bethel,KYUK case-specific license and master provenance,critical,General sharing policy does not establish rights to reuse BPD-origin footage or monetize it.,"Request written license, delivery specs, restrictions, attribution, term/territory and rights warranty.",open
+BET-R01,Bethel,Privacy/redaction and cost,high,Medical/minor/third-party data may be redacted; >5 staff hours may trigger fees; production may take months.,"Cap preauthorized fees; request estimate, segregable rolling production and redaction log.",open
+SOL-M01,Solano,Native McCampbell BWC and dash files/hash/export logs,high,YouTube transcodes cannot prove native continuity or absence of edits.,"Submit CPRA request for originals, metadata and audit logs.",open
+SOL-M02,Solano,McDowell BWC or nonexistence proof,critical,All bodycam angles are not accounted for.,"Request native file plus activation, docking, audit, deletion and retention records; seek declaration if absent.",open
+SOL-M03,Solano,Material deposition excerpts/transcripts,high,Public order quotes only selected testimony; factual disputes remain.,Acquire public ECF exhibits/transcripts; respect protective order and sealing.,open
+SOL-M04,Solano,Executed settlement agreement and payment/approval record,high,"Court approval confirms amount but not full releases, admissions, confidentiality, or allocation.",Acquire ECF 256 attachments and County executed agreement/authorization.,open
+SOL-R01,Solano,Copyright/provenance,medium,Agency upload is accessible but reuse rights and third-party privacy are not automatically cleared.,Seek written agency permission/terms; document fair-use analysis separately.,open
+SOL-R02,Solano,Unedited claim,high,Agency label is not independent forensic verification.,"Compare native hashes/timestamps, audit logs and all camera evidence.",open
