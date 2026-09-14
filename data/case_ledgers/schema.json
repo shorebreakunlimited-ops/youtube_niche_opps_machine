@@ -1,0 +1,115 @@
+{
+  "candidate_cases": {
+    "required": [
+      "case_id",
+      "case_name",
+      "working_title",
+      "novelty",
+      "evidence",
+      "decision_chain",
+      "aftermath",
+      "packaging",
+      "production_fit",
+      "safety",
+      "candidate_score",
+      "verdict",
+      "poison_five_plus_over_500k",
+      "poison_covered_by_major_creator",
+      "poison_name_famous",
+      "poison_heavily_clipped",
+      "poison_no_new_update",
+      "poison_heavily_politicized",
+      "poison_needs_psych_claims",
+      "poison_poor_footage",
+      "poison_signal_count",
+      "verified_at",
+      "search_queries",
+      "videos_reviewed",
+      "videos_over_500k",
+      "top_video_views",
+      "top_video_url",
+      "major_creator_matches",
+      "data_source"
+    ],
+    "score_axes_0_to_10": [
+      "novelty",
+      "evidence",
+      "decision_chain",
+      "aftermath",
+      "packaging",
+      "production_fit",
+      "safety"
+    ],
+    "score_weights": {
+      "novelty": 20,
+      "evidence": 20,
+      "decision_chain": 15,
+      "aftermath": 15,
+      "packaging": 15,
+      "production_fit": 10,
+      "safety": 5
+    },
+    "verdicts": [
+      "strong",
+      "maybe",
+      "avoid"
+    ],
+    "parent_child": {
+      "parent_case_id": "optional; set for child/subcases",
+      "relationship": [
+        "standalone",
+        "parent",
+        "child"
+      ]
+    }
+  },
+  "case_sources": {
+    "required": [
+      "case_id",
+      "source_type",
+      "source_url",
+      "source_title",
+      "provenance_class"
+    ],
+    "strong_source_types": [
+      "bodycam_raw",
+      "court_police_record",
+      "independent_reporting",
+      "legal_outcome"
+    ],
+    "optional": [
+      "acquisition_notes",
+      "notes"
+    ],
+    "bodycam_raw_provenance": [
+      "direct_video",
+      "agency_release",
+      "court_exhibit",
+      "public_record_file",
+      "acquisition_location"
+    ],
+    "court_police_record_provenance": [
+      "court_docket",
+      "police_document",
+      "court_exhibit",
+      "public_record_file",
+      "agency_release"
+    ]
+  },
+  "youtube_metrics": {
+    "live_only": {
+      "data_source": "youtube_data_api_v3",
+      "youtube_verified": true,
+      "verified_at": "ISO-8601 timestamp from successful live audit"
+    },
+    "mock_or_test": {
+      "data_source": "mock",
+      "youtube_verified": false,
+      "verified_at": null
+    },
+    "never_use": [
+      "est.",
+      "estimated"
+    ]
+  }
+}
