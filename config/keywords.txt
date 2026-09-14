@@ -1,5 +1,5 @@
-# Default FTS seed stems/tokens (first-pass discovery).
-# Prefer stems/tokens over multi-word phrases at index search time.
+# FTS seed stems/tokens for first-pass discovery.
+# Phrase filters belong on exported CSV later — not here.
 body*
 camera
 worn

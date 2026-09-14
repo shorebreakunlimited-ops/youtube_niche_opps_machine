@@ -11,3 +11,9 @@ ingest/downloads/
 ingest/keyword_hits.csv
 ingest/target_urls.txt
 *.sqlite3
+# Ingest runtime artifacts
+ingest/downloads_*/
+ingest/keyword_hits*.csv
+ingest/target_urls*.txt
+ingest/download_*.json
+ingest/download_*.csv

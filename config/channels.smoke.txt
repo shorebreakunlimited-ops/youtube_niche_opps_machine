@@ -1,5 +1,4 @@
 # Controlled smoke-test videos only — not full channel catalogs.
-# Used by the enabled "Smoke Test Videos" source in config/sources.csv.
 https://www.youtube.com/watch?v=uH39zyC6iBc
 https://www.youtube.com/watch?v=Waqs0kN3few
 https://www.youtube.com/watch?v=PpsLfJusVnI

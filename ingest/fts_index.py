@@ -89,15 +89,9 @@ def load_keywords(path: Path | str) -> list[str]:
 
 
 def _fts_query_for_term(term: str) -> str:
-    """
-    Convert a seed stem/token into a safe FTS5 query fragment.
-    Supports trailing * wildcards. Rejects phrase-style multi-token inputs
-    by AND-joining tokens (still useful) rather than treating as phrases.
-    """
     raw = term.strip()
     if not raw:
         raise ValueError("empty keyword")
-    # Prefer stem/token mode: split on whitespace, escape quotes.
     parts = _TOKEN_RE.findall(raw)
     if not parts:
         raise ValueError(f"unsupported keyword: {term!r}")

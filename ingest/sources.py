@@ -111,7 +111,6 @@ def select_sources(
             "or pass --include-disabled --source NAME for an intentional full-channel run."
         )
 
-    # Extra guard: never silently expand disabled channels without include flag.
     if not include_disabled:
         disabled_channels = [s for s in selected if (not s.enabled) and s.is_channel]
         if disabled_channels:
