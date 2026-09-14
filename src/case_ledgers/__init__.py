@@ -1,6 +1,6 @@
 """Case ledger package for poisoned vs candidate bodycam episode research."""
 
-from .loader import launch_shortlist, load_all, load_csv, load_ledger, rank_candidates
+from .loader import launch_shortlist, load_all, load_csv, load_ledger, provisional_candidates, rank_candidates
 from .models import CaseRecord, CaseSource
 from .scoring import (
     LedgerValidationError,
@@ -16,6 +16,7 @@ from .scoring import (
     youtube_is_verified,
 )
 from .sources import assert_strong_sources, load_case_sources
+from .youtube_metrics import YouTubeAuditError, audit_case_on_youtube, mock_youtube_audit_result
 
 __all__ = [
     "CaseRecord",
@@ -30,6 +31,7 @@ __all__ = [
     "compute_candidate_score",
     "count_poison_signals",
     "launch_shortlist",
+    "provisional_candidates",
     "load_all",
     "load_case_sources",
     "load_csv",
@@ -38,4 +40,7 @@ __all__ = [
     "required_source_types_present",
     "verdict_from_score",
     "youtube_is_verified",
+    "YouTubeAuditError",
+    "audit_case_on_youtube",
+    "mock_youtube_audit_result",
 ]

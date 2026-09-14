@@ -54,3 +54,11 @@ Rule applied: do not start with famous cases; prioritize clickable footage + una
 
 - **C002 Cpl. Matthew Lau** = parent investigation (launch candidate).
 - **C003 Anthony Jameson** = child/subcase inside the Lau pattern — scored for tracking, excluded from `launch_shortlist()`.
+
+## 2026-09-14 revision notes
+
+- YouTube audits must be live API only (`use_mock` rejected; API errors raise; mock results tagged `data_source=mock`).
+- Source provenance fields added; news articles cannot satisfy `bodycam_raw` or `court_police_record`.
+- Shared secondary URLs cannot cover court + independent + legal_outcome together.
+- **C004 Robert Scalise demoted to maybe** (pending civil suit; dismissed citation insufficient; raw footage acquisition not established).
+- C001 / C002 / C004 treated as **provisional** research candidates — not a final launch shortlist.

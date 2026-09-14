@@ -5,7 +5,7 @@ from __future__ import annotations
 import argparse
 import json
 
-from .loader import launch_shortlist, load_ledger, rank_candidates
+from .loader import launch_shortlist, load_ledger, provisional_candidates, rank_candidates
 
 
 def _print_table(rows) -> None:
@@ -33,8 +33,9 @@ def main(argv: list[str] | None = None) -> int:
     p_cand.add_argument("--include-children", action="store_true")
 
     sub.add_parser("list-poisoned", help="List poisoned cases")
-    sub.add_parser("rank", help="Rank launch shortlist (independent gate)")
-    sub.add_parser("json-shortlist", help="Emit launch shortlist as JSON")
+    sub.add_parser("rank", help="Show provisional research candidates (not a final launch shortlist)")
+    sub.add_parser("launch-shortlist", help="Final launch shortlist (independent gate; may be empty)")
+    sub.add_parser("json-shortlist", help="Emit provisional research candidates as JSON")
 
     args = parser.parse_args(argv)
 
@@ -53,6 +54,9 @@ def main(argv: list[str] | None = None) -> int:
         _print_table(sorted(rows, key=lambda r: r.case_name.lower()))
         return 0
     if args.cmd == "rank":
+        _print_table(provisional_candidates())
+        return 0
+    if args.cmd == "launch-shortlist":
         _print_table(launch_shortlist())
         return 0
     if args.cmd == "json-shortlist":
@@ -73,7 +77,7 @@ def main(argv: list[str] | None = None) -> int:
                 "search_queries": r.search_queries,
                 "poison_signal_count": r.poison_signal_count,
             }
-            for r in launch_shortlist()
+            for r in provisional_candidates()
         ]
         print(json.dumps(payload, indent=2))
         return 0

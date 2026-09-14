@@ -89,13 +89,18 @@ def required_source_types_present(source_types: Iterable[str]) -> bool:
 
 
 def youtube_is_verified(row: Any) -> bool:
-    """True only when YouTube metrics were pulled from a real data source."""
-    if str(_get(row, "data_source", "")).strip().lower() in {"", "unknown", "none", "null"}:
+    """True only for successful live YouTube Data API audits."""
+    data_source = str(_get(row, "data_source", "")).strip().lower()
+    if data_source in {"", "unknown", "none", "null", "mock"}:
+        return False
+    if data_source != "youtube_data_api_v3":
         return False
     for field in ("videos_reviewed", "videos_over_500k"):
         value = _get(row, field)
         if value is None or str(value).strip().lower() in {"", "unknown", "null", "none"}:
             return False
+    if _get(row, "verified_at", None) in {None, ""}:
+        return False
     explicit = _get(row, "youtube_verified", None)
     if explicit is not None and str(explicit).strip() != "":
         return str(explicit).strip().lower() in {"1", "true", "yes", "y"}

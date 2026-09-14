@@ -108,6 +108,7 @@ class YouTubeClient:
         region_code: str = "US",
         relevance_language: str = "en",
         search_context: str = "niche_validation",
+        fallback_to_mock: bool = True,
     ) -> Tuple[List[Video], Dict[str, Channel], List[SearchRankObservation]]:
         """Search videos by keyword/topic with automatic batch detail enrichment and ranking observations."""
         cache_key = f"yt_search:{query}:{max_results}:{order}:{published_after}:{region_code}:{relevance_language}"
@@ -151,7 +152,11 @@ class YouTubeClient:
             resp = requests.get(url, params=params, timeout=15)
             if resp.status_code != 200:
                 logger.error(f"YouTube search API error: {resp.status_code} {resp.text}")
-                # Fallback to mock if API returns error
+                if not fallback_to_mock:
+                    raise RuntimeError(
+                        f"YouTube search API error: {resp.status_code} {resp.text}"
+                    )
+                # Fallback to mock if API returns error (disabled for verification audits)
                 videos, channels, observations = self._generate_mock_search_results(query, max_results)
             else:
                 data = resp.json()

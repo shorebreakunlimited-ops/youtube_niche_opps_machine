@@ -14,6 +14,8 @@ class CaseSource:
     source_type: str
     source_url: str
     source_title: str
+    provenance_class: str = ""
+    acquisition_notes: str = ""
     notes: str = ""
 
 

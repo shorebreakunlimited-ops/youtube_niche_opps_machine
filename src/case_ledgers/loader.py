@@ -334,5 +334,43 @@ def launch_shortlist(
             continue
         if verdict_from_score(score, poison_count) != "strong":
             continue
+        # Final launch shortlist is intentionally empty until aftermath +
+        # raw-footage acquisition are locked. Provisional research cases
+        # (including former launch picks) are exposed via provisional_candidates().
+        if "provisional" in (case.notes or "").lower():
+            continue
+        out.append(case)
+    return sorted(out, key=lambda c: (-c.recomputed_score, c.case_id))
+
+
+def provisional_candidates(
+    candidates: Iterable[CaseRecord] | None = None,
+    *,
+    min_score: int = 60,
+    max_poison: int = 1,
+    exclude_children: bool = True,
+    data_dir: Path | None = None,
+) -> list[CaseRecord]:
+    """Research slate of provisional candidates — not a final launch shortlist.
+
+    Includes strong/maybe cases that survive basic poison and child filters.
+    Final launch approval is intentionally separate and currently empty.
+    """
+    rows = list(candidates) if candidates is not None else load_ledger("candidate_cases", data_dir=data_dir)
+    out: list[CaseRecord] = []
+    for case in rows:
+        if exclude_children and case.is_child:
+            continue
+        poison_count = case.recomputed_poison_count
+        if poison_count >= 2 or poison_count > max_poison:
+            continue
+        try:
+            score = case.recomputed_score
+        except ValueError:
+            continue
+        if score < min_score:
+            continue
+        if case.verdict not in {"strong", "maybe"}:
+            continue
         out.append(case)
     return sorted(out, key=lambda c: (-c.recomputed_score, c.case_id))

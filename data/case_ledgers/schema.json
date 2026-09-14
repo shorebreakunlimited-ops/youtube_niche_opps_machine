@@ -68,26 +68,48 @@
       "case_id",
       "source_type",
       "source_url",
-      "source_title"
+      "source_title",
+      "provenance_class"
     ],
     "strong_source_types": [
       "bodycam_raw",
       "court_police_record",
       "independent_reporting",
       "legal_outcome"
+    ],
+    "optional": [
+      "acquisition_notes",
+      "notes"
+    ],
+    "bodycam_raw_provenance": [
+      "direct_video",
+      "agency_release",
+      "court_exhibit",
+      "public_record_file",
+      "acquisition_location"
+    ],
+    "court_police_record_provenance": [
+      "court_docket",
+      "police_document",
+      "court_exhibit",
+      "public_record_file",
+      "agency_release"
     ]
   },
   "youtube_metrics": {
+    "live_only": {
+      "data_source": "youtube_data_api_v3",
+      "youtube_verified": true,
+      "verified_at": "ISO-8601 timestamp from successful live audit"
+    },
+    "mock_or_test": {
+      "data_source": "mock",
+      "youtube_verified": false,
+      "verified_at": null
+    },
     "never_use": [
       "est.",
       "estimated"
-    ],
-    "unknown": [
-      "",
-      "unknown",
-      "null",
-      "none"
-    ],
-    "verified_when": "data_source is real AND videos_reviewed/videos_over_500k are numeric"
+    ]
   }
 }
